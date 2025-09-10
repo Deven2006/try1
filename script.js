@@ -7,7 +7,7 @@ const { Engine, Render, Runner, World, Bodies } = Matter;
 
 const engine = Engine.create();
 const world = engine.world;
-engine.world.gravity.y = 0.7; // This is the default. Try changing it!
+engine.world.gravity.y = 0.1; // This is the default. Try changing it!
 
 // Get the container for our canvas
 const canvasContainer = document.getElementById('canvas-container');
@@ -42,6 +42,42 @@ World.add(world, [ground, leftWall, rightWall]);
 // Get references to the input box and button from our HTML
 const textInput = document.getElementById('text-input');
 const createButton = document.getElementById('create-button');
+// --- NEW: Get references to the sliders and their value displays ---
+const gravitySlider = document.getElementById('gravity-slider');
+const gravityValueSpan = document.getElementById('gravity-value');
+const restitutionSlider = document.getElementById('restitution-slider');
+const restitutionValueSpan = document.getElementById('restitution-value');
+
+// --- NEW: Variable to hold the bounciness value from the slider ---
+let currentRestitution = 1.0;
+
+// This function runs when the "Create Object" button is clicked
+createButton.addEventListener('click', () => {
+    const text = textInput.value;
+
+    // Only create an object if the user has typed something
+    if (text.trim()!== '') {
+        // Create a new animated object based on the text
+        createObjectFromText(text);
+        
+        // Clear the input box for the next entry
+        textInput.value = '';
+        textInput.focus();
+    }
+});
+
+// --- NEW: Event listener for the Gravity slider ---
+gravitySlider.addEventListener('input', (event) => {
+    const newGravity = parseFloat(event.target.value);
+    engine.world.gravity.y = newGravity;
+    gravityValueSpan.textContent = newGravity.toFixed(1);
+});
+
+// --- NEW: Event listener for the Bounciness slider ---
+restitutionSlider.addEventListener('input', (event) => {
+    currentRestitution = parseFloat(event.target.value);
+    restitutionValueSpan.textContent = currentRestitution.toFixed(1);
+});
 
 // This function runs when the "Create Object" button is clicked
 createButton.addEventListener('click', () => {
@@ -91,3 +127,24 @@ function createObjectFromText(text) {
     // Add the new object to our physics world
     World.add(world, newObject);
 }
+
+// --- Show Speed Next to Each Ball ---
+// Use Matter.Events to draw speed after each render
+Matter.Events.on(render, 'afterRender', function() {
+    const ctx = render.context;
+    // Loop through all bodies in the world
+    world.bodies.forEach(body => {
+        // Only annotate dynamic (non-static) circles (balls)
+        if (!body.isStatic && body.circleRadius) {
+            // Calculate speed
+            const speed = Math.sqrt(body.velocity.x * body.velocity.x + body.velocity.y * body.velocity.y);
+            // Draw the speed next to the ball
+            ctx.save();
+            ctx.font = '16px Arial';
+            ctx.fillStyle = '#222';
+            ctx.textAlign = 'left';
+            ctx.fillText('Speed: ' + speed.toFixed(2), body.position.x + body.circleRadius + 8, body.position.y);
+            ctx.restore();
+        }
+    });
+});
