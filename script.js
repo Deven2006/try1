@@ -52,19 +52,7 @@ const restitutionValueSpan = document.getElementById('restitution-value');
 let currentRestitution = 1.0;
 
 // This function runs when the "Create Object" button is clicked
-createButton.addEventListener('click', () => {
-    const text = textInput.value;
-
-    // Only create an object if the user has typed something
-    if (text.trim()!== '') {
-        // Create a new animated object based on the text
-        createObjectFromText(text);
-        
-        // Clear the input box for the next entry
-        textInput.value = '';
-        textInput.focus();
-    }
-});
+// (Removed duplicate event listener below)
 
 // --- NEW: Event listener for the Gravity slider ---
 gravitySlider.addEventListener('input', (event) => {
@@ -115,36 +103,80 @@ function createObjectFromText(text) {
     const x = 100 + Math.random() * 600;
     const y = 50;
 
-    // Create a new rectangle body with physics properties
+
+    // Create a new circle body with physics properties, using current restitution
     const newObject = Bodies.circle(x, y, size / 2, {
-        restitution: 1, // How bouncy the object is (0-1)
+        restitution: currentRestitution, // Use slider value
         friction: 0,
         render: {
             fillStyle: `hsl(${Math.random() * 360}, 70%, 50%)` // Give it a random color
         }
     });
+// --- Initialize slider and value for gravity ---
+gravitySlider.value = engine.world.gravity.y;
+gravityValueSpan.textContent = engine.world.gravity.y.toFixed(1);
+// --- Initialize slider and value for restitution ---
+restitutionSlider.value = currentRestitution;
+restitutionValueSpan.textContent = currentRestitution.toFixed(1);
 
     // Add the new object to our physics world
     World.add(world, newObject);
 }
 
-// --- Show Speed Next to Each Ball ---
-// Use Matter.Events to draw speed after each render
+// --- NEW: Helper function to draw an arrow on the canvas ---
+function drawArrow(ctx, fromx, fromy, tox, toy, arrowWidth, color) {
+    const headlen = 10;
+    const angle = Math.atan2(toy - fromy, tox - fromx);
+
+    ctx.save();
+    ctx.strokeStyle = color;
+
+    // Draw line
+    ctx.beginPath();
+    ctx.moveTo(fromx, fromy);
+    ctx.lineTo(tox, toy);
+    ctx.lineWidth = arrowWidth;
+    ctx.stroke();
+
+    // Draw arrowhead
+    ctx.beginPath();
+    ctx.moveTo(tox, toy);
+    ctx.lineTo(tox - headlen * Math.cos(angle - Math.PI / 7), toy - headlen * Math.sin(angle - Math.PI / 7));
+    ctx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 7), toy - headlen * Math.sin(angle + Math.PI / 7));
+    ctx.lineTo(tox, toy);
+    ctx.lineTo(tox - headlen * Math.cos(angle - Math.PI / 7), toy - headlen * Math.sin(angle - Math.PI / 7));
+    ctx.stroke();
+    ctx.restore();
+}
+
+
+// --- Show Speed and Forces on Each Ball ---
 Matter.Events.on(render, 'afterRender', function() {
     const ctx = render.context;
-    // Loop through all bodies in the world
     world.bodies.forEach(body => {
-        // Only annotate dynamic (non-static) circles (balls)
         if (!body.isStatic && body.circleRadius) {
-            // Calculate speed
+            // --- Draw Speed Text ---
             const speed = Math.sqrt(body.velocity.x * body.velocity.x + body.velocity.y * body.velocity.y);
-            // Draw the speed next to the ball
             ctx.save();
             ctx.font = '16px Arial';
             ctx.fillStyle = '#222';
             ctx.textAlign = 'left';
             ctx.fillText('Speed: ' + speed.toFixed(2), body.position.x + body.circleRadius + 8, body.position.y);
             ctx.restore();
+
+            // --- NEW: Draw Gravity Vector ---
+            const startPoint = body.position;
+            // The length of the arrow is proportional to the gravity strength
+            const endPoint = {
+                x: body.position.x,
+                y: body.position.y + (engine.world.gravity.y * 50) 
+            };
+            drawArrow(ctx, startPoint.x, startPoint.y, endPoint.x, endPoint.y, 3, 'red');
         }
     });
 });
+
+
+
+
+
